@@ -40,15 +40,18 @@
 ## 快速开始
 
 ```bash
-# 1) 安装依赖
-pnpm install
+# 一行命令启动 (首次会自动安装依赖)
+pnpm start
+# 或: ./start.sh
+# 或: pnpm dev   (跳过自动安装)
 
-# 2) 同时启动 editor / viewer / server
-pnpm dev
-
-# 3) 打开浏览器
+# 打开浏览器
 #   - 编辑器: http://localhost:5173
 #   - 访问端: http://localhost:5174/?id=<projectId>
+
+# 一行命令停止
+pnpm stop
+# 或: ./stop.sh
 ```
 
 首次访问 `/console` 时, 用任意邮箱注册即可 (默认开启开放注册)。后端会写入 `data/db.json` 与 `public/uploads/`。
@@ -106,7 +109,9 @@ pnpm build
 
 | 任务 | 命令 |
 |------|------|
-| 启动所有 | `pnpm dev` |
+| **一键启动 (推荐)** | `pnpm start` |
+| 开发模式 | `pnpm dev` |
+| 一键停止 | `pnpm stop` |
 | 类型检查 | `pnpm -r typecheck` |
 | 构建 | `pnpm build` |
 | 清理 | `pnpm clean` |

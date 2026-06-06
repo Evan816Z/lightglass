@@ -5,6 +5,8 @@
   "description": "LightGlass — 现代化 Web 可视化桌面编辑系统",
   "scripts": {
     "dev": "concurrently -k -n editor,viewer,server -c cyan,magenta,yellow \"pnpm --filter @lightglass/editor dev\" \"pnpm --filter @lightglass/viewer dev\" \"pnpm --filter @lightglass/server dev\"",
+    "start": "bash start.sh",
+    "stop": "bash stop.sh",
     "build": "pnpm -r --filter=!@lightglass/server build && pnpm --filter @lightglass/server build",
     "build:editor": "pnpm --filter @lightglass/editor build",
     "build:viewer": "pnpm --filter @lightglass/viewer build",
