@@ -39,22 +39,25 @@
 
 ## 快速开始
 
+> **跨平台一行命令**, 自动安装依赖、自动释放端口、Windows / macOS / Linux 通用。
+
 ```bash
-# 一行命令启动 (首次会自动安装依赖)
-pnpm start
-# 或: ./start.sh
-# 或: pnpm dev   (跳过自动安装)
+# === 方式 A (推荐): 跨平台 Node 脚本 ===
+pnpm start                 # 或: node scripts/start.mjs
+pnpm stop                  # 一键停止
 
-# 打开浏览器
-#   - 编辑器: http://localhost:5173
-#   - 访问端: http://localhost:5174/?id=<projectId>
+# === 方式 B: 原生脚本 ===
+# Windows CMD : start.bat / stop.bat
+# Windows PS  : .\start.ps1
+# macOS/Linux : ./start.sh / ./stop.sh
 
-# 一行命令停止
-pnpm stop
-# 或: ./stop.sh
+# === 方式 C: 直接 dev 模式 (跳过自动安装) ===
+pnpm dev
 ```
 
-首次访问 `/console` 时, 用任意邮箱注册即可 (默认开启开放注册)。后端会写入 `data/db.json` 与 `public/uploads/`。
+打开浏览器访问 **http://localhost:5173** 即可使用编辑器, 访问端为 **http://localhost:5174**。
+
+> 首次访问 `/console` 时, 用任意邮箱注册即可 (默认开启开放注册)。后端会写入 `data/db.json` 与 `public/uploads/`。
 
 ### 单独启动
 
