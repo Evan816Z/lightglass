@@ -1,0 +1,2 @@
+/** @type {import('pino-pretty').PrettyOptions} */
+export {};
