@@ -1,27 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDocumentStore } from '../../store/document';
 import { useSelectionStore } from '../../store/selection';
+import { useCanvasScale } from './CanvasArea';
 
-export default function SelectionOverlay({ containerRef }: { containerRef: any }) {
+export default function SelectionOverlay() {
   const document_ = useDocumentStore((s) => s.document);
   const marquee = useSelectionStore((s) => s.marquee);
   const setMarquee = useSelectionStore((s) => s.setMarquee);
   const setMany = useSelectionStore((s) => s.setMany);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const scale = useCanvasScale();
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const root = containerRef?.current;
+    const root = document.querySelector('[data-canvas-root]') as HTMLDivElement | null;
     if (!root) return;
+    rootRef.current = root;
     function onDown(e: MouseEvent) {
       const target = e.target as HTMLElement;
       if (target.closest('[data-window-id]')) return;
       if (target.closest('button,input,textarea,.toolbar,.panel')) return;
+      if (!root) return;
       const rect = root.getBoundingClientRect();
       setStart({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     }
     function onMove(e: MouseEvent) {
-      if (!start) return;
+      if (!start || !root) return;
       const rect = root.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -33,10 +37,17 @@ export default function SelectionOverlay({ containerRef }: { containerRef: any }
       });
     }
     function onUp() {
-      if (marquee) {
+      if (marquee && root) {
         const ids: string[] = [];
         document_.windows.forEach((w) => {
-          if (intersects(marquee, w)) ids.push(w.id);
+          // marquee 与窗口都在缩放后的屏幕坐标系, 用 scale 换算窗口数据坐标
+          const box = {
+            x: w.x * scale,
+            y: w.y * scale,
+            width: w.width * scale,
+            height: w.height * scale,
+          };
+          if (intersects(marquee, box)) ids.push(w.id);
         });
         if (ids.length > 0) setMany(ids);
       }
@@ -51,7 +62,7 @@ export default function SelectionOverlay({ containerRef }: { containerRef: any }
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [containerRef, start, marquee, document_, setMany, setMarquee]);
+  }, [start, marquee, document_, setMany, setMarquee, scale]);
 
   if (!marquee) return null;
 

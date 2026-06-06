@@ -133,6 +133,13 @@ html, body, #root {
 .btn-primary:hover { background: linear-gradient(180deg, #9C7EFF, #7A5DFA); }
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+.btn-ghost[data-active="true"] {
+  background: rgba(124,92,255,0.18);
+  border-color: rgba(124,92,255,0.45);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(124,92,255,0.25), 0 6px 18px rgba(124,92,255,0.18);
+}
+.btn-ghost[data-active="true"]:hover { background: rgba(124,92,255,0.24); }
 
 /* 输入 */
 .input {
