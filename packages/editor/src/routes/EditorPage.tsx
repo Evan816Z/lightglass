@@ -212,7 +212,7 @@ export default function EditorPage() {
                 </WindowFrame>
               ))}
 
-            <SelectionOverlay containerRef={containerRef} />
+            <SelectionOverlay />
             <GuidesLayer />
           </CanvasArea>
         </div>
@@ -265,13 +265,21 @@ function MoveableHost() {
   const ui = useUIStore();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const moveableRef = useRef<Moveable | null>(null);
+  const [scale, setScale] = useState(1);
 
-  // 找到 canvas 容器以计算 scale
+  // 找到 canvas 容器, 并从其宽度推算缩放 (data-canvas-root 宽度 = canvas.width * scale)
   useEffect(() => {
-    containerRef.current = document.querySelector('[data-canvas-root]') as HTMLDivElement;
-  }, [document_.windows.length]);
+    const root = document.querySelector('[data-canvas-root]') as HTMLDivElement | null;
+    containerRef.current = root;
+    if (root) {
+      const cw = parseFloat(root.style.width) || root.clientWidth;
+      if (document_.canvas.width > 0) setScale(cw / document_.canvas.width);
+    }
+  });
 
   if (selected.length === 0) return null;
+
+  const inv = scale || 1; // 用于将屏幕/缩放坐标换算回数据坐标
 
   return (
     <Moveable
@@ -283,8 +291,8 @@ function MoveableHost() {
       rotatable={false}
       snappable={ui.snap}
       bounds={'[data-canvas-root]'}
-      verticalGuidelines={ui.showGuides ? computeVerticalGuidelines(document_) : []}
-      horizontalGuidelines={ui.showGuides ? computeHorizontalGuidelines(document_) : []}
+      verticalGuidelines={ui.showGuides ? computeVerticalGuidelines(document_, scale) : []}
+      horizontalGuidelines={ui.showGuides ? computeHorizontalGuidelines(document_, scale) : []}
       throttleDrag={0}
       throttleResize={0}
       onDragStart={() => history.push(JSON.stringify(document_))}
@@ -295,9 +303,10 @@ function MoveableHost() {
       onDragEnd={({ target }) => {
         const id = target.getAttribute('data-window-id');
         if (!id) return;
-        const x = parseFloat(target.style.left);
-        const y = parseFloat(target.style.top);
-        updateWindow(id, { x, y });
+        updateWindow(id, {
+          x: parseFloat(target.style.left) / inv,
+          y: parseFloat(target.style.top) / inv,
+        });
       }}
       onResizeStart={() => history.push(JSON.stringify(document_))}
       onResize={({ target, width, height, drag }) => {
@@ -310,69 +319,86 @@ function MoveableHost() {
         const id = target.getAttribute('data-window-id');
         if (!id) return;
         updateWindow(id, {
-          width: parseFloat(target.style.width),
-          height: parseFloat(target.style.height),
-          x: parseFloat(target.style.left),
-          y: parseFloat(target.style.top),
+          width: parseFloat(target.style.width) / inv,
+          height: parseFloat(target.style.height) / inv,
+          x: parseFloat(target.style.left) / inv,
+          y: parseFloat(target.style.top) / inv,
         });
       }}
     />
   );
 }
 
-function computeVerticalGuidelines(doc: any): number[] {
-  const list: number[] = [0, doc.canvas.width / 2, doc.canvas.width];
+function computeVerticalGuidelines(doc: any, scale = 1): number[] {
+  const list: number[] = [0, (doc.canvas.width / 2) * scale, doc.canvas.width * scale];
   for (const w of doc.windows) {
-    list.push(w.x, w.x + w.width / 2, w.x + w.width);
+    list.push(w.x * scale, (w.x + w.width / 2) * scale, (w.x + w.width) * scale);
   }
   return Array.from(new Set(list));
 }
 
-function computeHorizontalGuidelines(doc: any): number[] {
-  const list: number[] = [0, doc.canvas.height / 2, doc.canvas.height];
+function computeHorizontalGuidelines(doc: any, scale = 1): number[] {
+  const list: number[] = [0, (doc.canvas.height / 2) * scale, doc.canvas.height * scale];
   for (const w of doc.windows) {
-    list.push(w.y, w.y + w.height / 2, w.y + w.height);
+    list.push(w.y * scale, (w.y + w.height / 2) * scale, (w.y + w.height) * scale);
   }
   return Array.from(new Set(list));
 }
 
 /* -------------------- 预览抽屉 -------------------- */
 function PreviewDrawer({ projectId, document, onClose }: { projectId: string; document: any; onClose: () => void }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    function calc() {
+      const wrap = wrapRef.current;
+      if (!wrap) return;
+      const padding = 48; // 抽屉内边距 + 滚动条预留
+      const sx = (wrap.clientWidth - padding) / document.canvas.width;
+      const sy = (wrap.clientHeight - padding) / document.canvas.height;
+      const s = Math.max(0.1, Math.min(sx, sy));
+      setScale(isFinite(s) ? s : 1);
+    }
+    calc();
+    const ro = new ResizeObserver(calc);
+    if (wrapRef.current) ro.observe(wrapRef.current);
+    window.addEventListener('resize', calc);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', calc);
+    };
+  }, [document.canvas.width, document.canvas.height]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-40 bg-black/70 backdrop-blur-md"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-md p-6"
       onClick={onClose}
     >
       <motion.div
-        initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }}
+        initial={{ y: 24, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 24, opacity: 0, scale: 0.96 }}
         onClick={(e) => e.stopPropagation()}
-        className="absolute left-1/2 top-12 max-h-[80vh] w-[min(96vw,1280px)] -translate-x-1/2"
+        className="glass-strong flex max-h-[88vh] w-[min(96vw,1280px)] flex-col overflow-hidden rounded-2xl"
       >
-        <div className="glass-strong overflow-hidden rounded-2xl">
-          <div className="flex items-center justify-between px-5 py-3">
-            <div className="text-sm text-ink-200">访问端预览 · {projectId.slice(0, 6)}</div>
-            <button className="btn btn-ghost" onClick={onClose}>关闭</button>
-          </div>
-          <div className="bg-ink-900 p-4">
-            <PreviewCanvas document={document} />
+        <div className="flex items-center justify-between px-5 py-3">
+          <div className="text-sm text-ink-200">访问端预览 · {projectId.slice(0, 6)}</div>
+          <button className="btn btn-ghost" onClick={onClose}>关闭</button>
+        </div>
+        <div ref={wrapRef} className="flex-1 overflow-auto bg-ink-900 p-6">
+          <div className="mx-auto" style={{ width: document.canvas.width * scale, height: document.canvas.height * scale }}>
+            <div style={{ width: document.canvas.width, height: document.canvas.height, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+              <BackgroundRenderer background={document.background} />
+              {document.windows.map((w: any) => (
+                <WindowFrame key={w.id} window={w} theme={document.theme} selected={false} onSelect={() => {}} onChange={() => {}} onBringFront={() => {}}>
+                  <WidgetRenderer content={w.content} readOnly windowId={w.id} />
+                </WindowFrame>
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-function PreviewCanvas({ document }: { document: any }) {
-  return (
-    <div className="viewport-frame mx-auto" style={{ width: document.canvas.width, height: document.canvas.height, transform: 'scale(0.7)', transformOrigin: 'top left' }}>
-      <BackgroundRenderer background={document.background} />
-      {document.windows.map((w: any) => (
-        <WindowFrame key={w.id} window={w} theme={document.theme} selected={false} onSelect={() => {}} onChange={() => {}} onBringFront={() => {}}>
-          <WidgetRenderer content={w.content} readOnly windowId={w.id} />
-        </WindowFrame>
-      ))}
-    </div>
   );
 }
 
